@@ -1,0 +1,115 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/arkeojournal/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  CORRESPONDENT_ACADEMIC
+  CORRESPONDENT_MUSEUM
+  CORRESPONDENT_EXPERT
+  STUDENT
+  GUEST
+}
+
+enum Kategori {
+  KAZIDAN_HABERLER
+  OKULDAN_HABERLER
+  MUZEDEN_HABERLER
+}
+
+enum NewsStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(STUDENT)
+  organization  String?
+  department    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  news          News[]
+  comments      Comment[]
+  newsApprovals NewsApproval[]
+
+  @@index([email])
+}
+
+model News {
+  id                String        @id @default(cuid())
+  title             String
+  content           String
+  summary           String?
+  imageUrl          String?
+  kategori          Kategori
+  status            NewsStatus    @default(DRAFT)
+  rejectionReason   String?
+  submittedAt       DateTime?
+  publishedAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  authorId          String
+  author            User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  comments          Comment[]
+  newsApprovals     NewsApproval[]
+
+  @@index([kategori])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  newsId    String
+  news      News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
+
+  @@index([newsId])
+  @@index([createdAt])
+}
+
+model NewsApproval {
+  id        String           @id @default(cuid())
+  newsId    String
+  news      News             @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  
+  editorId  String
+  editor    User             @relation(fields: [editorId], references: [id], onDelete: Cascade)
+  
+  status    ApprovalStatus   @default(PENDING)
+  comment   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([newsId, editorId])
+  @@index([status])
+}
