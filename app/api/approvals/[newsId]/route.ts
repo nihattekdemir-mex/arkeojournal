@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: { newsId:
       return NextResponse.json({ error: 'Bu haber artık onay aşamasında değil' }, { status: 400 });
     }
 
-    let approval = news.newsApprovals.find(a => a.editorId === userId);
+    let approval = news.newsApprovals.find((a: any) => a.editorId === userId);
 
     if (!approval) {
       approval = await prisma.newsApproval.create({

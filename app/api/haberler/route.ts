@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { Kategori, NewsStatus } from '@prisma/client';
 import { ROLE_KATEGORI_MAP } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = { status: 'PUBLISHED' };
 
-    if (kategori && Object.values(Kategori).includes(kategori as Kategori)) {
+    if (kategori) {
       where.kategori = kategori;
     }
 
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     const allowedKategoris = ROLE_KATEGORI_MAP[userRole] || [];
-    if (userRole !== 'ADMIN' && !allowedKategoris.includes(kategori as Kategori)) {
+    if (userRole !== 'ADMIN' && !allowedKategoris.includes(kategori)) {
       return NextResponse.json(
         { error: 'Sadece kendi kategorinize haber ekleyebilirsiniz' },
         { status: 403 }

@@ -1,5 +1,3 @@
-import { Role } from '@prisma/client';
-
 export type Permission = 
   | 'create_news'
   | 'read_news'
@@ -12,6 +10,15 @@ export type Permission =
   | 'view_approvals'
   | 'view_analytics'
   | 'publish_news';
+
+export type Role = 
+  | 'ADMIN'
+  | 'EDITOR'
+  | 'CORRESPONDENT_ACADEMIC'
+  | 'CORRESPONDENT_MUSEUM'
+  | 'CORRESPONDENT_EXPERT'
+  | 'STUDENT'
+  | 'GUEST';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
