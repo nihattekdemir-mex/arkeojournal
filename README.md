@@ -21,6 +21,7 @@ A comprehensive editorial management system built with Next.js 14, TypeScript, T
 - **Authentication**: NextAuth.js v4
 - **UI Components**: shadcn/ui
 - **Notifications**: Sonner
+- **Container**: Docker & Docker Compose
 - **Package Manager**: npm
 
 ## Project Structure
@@ -36,67 +37,102 @@ nextjs_space/
 │   │   └── [...nextauth]/      # NextAuth configuration
 │   ├── admin/                  # Admin dashboard pages
 │   │   ├── approvals/          # Approval queue page
-│   │   └── users/              # User management (planned)
+│   │   └── users/              # User management
 │   ├── haber/                  # News pages
 │   │   └── yeni/               # New news submission page
 │   ├── my-submissions/         # User submissions page
 │   └── page.tsx                # Home page
 ├── lib/
 │   ├── auth.ts                 # NextAuth configuration
-│   ├── constants.ts            # Role/category/status labels and mappings
+│   ├── constants.ts            # Role/category/status labels
 │   ├── db.ts                   # Prisma client singleton
-│   ├── permissions.ts          # Role-based permission system
+│   ├── permissions.ts          # RBAC permission system
 │   └── utils.ts                # Utility functions
 ├── prisma/
-│   └── schema.prisma           # Database schema definition
-└── public/                     # Static assets
+│   ├── schema.prisma           # Database schema
+│   └── seed.ts                 # Database seeding script
+├── docker-compose.yml          # PostgreSQL development container
+├── .env.example                # Environment variables template
+└── README.md                   # This file
 ```
 
-## Installation
+## Quick Start
 
-### Prerequisites
+### Option 1: Docker Setup (Recommended)
 
-- Node.js 18+ or later
-- PostgreSQL database
-- npm or yarn package manager
+**Prerequisites**: Docker and Docker Compose
 
-### Setup Steps
-
-1. **Clone the repository**
+1. **Clone and navigate**
    ```bash
    git clone https://github.com/nihattekdemir-mex/arkeojournal.git
    cd arkeojournal/nextjs_space
    ```
 
-2. **Install dependencies**
+2. **Start PostgreSQL**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Wait for database to be ready**
+   ```bash
+   sleep 5
+   ```
+
+4. **Install dependencies**
    ```bash
    npm install --legacy-peer-deps
    ```
 
-3. **Configure environment variables**
-   Create a `.env` file with:
-   ```
-   DATABASE_URL="postgresql://user:password@host:port/database"
-   NEXTAUTH_SECRET="your-secret-key-here"
-   NEXTAUTH_URL="http://localhost:3000"
-   ```
-
-4. **Generate Prisma client** (see Known Issues below)
+5. **Generate Prisma client and run migrations**
    ```bash
    npx prisma generate
+   npx prisma db push
    ```
 
-5. **Run database migrations**
+6. **Seed database with test data**
    ```bash
-   npx prisma migrate dev --name init
+   npm run seed
    ```
 
-6. **Start the development server**
+7. **Start development server**
    ```bash
    npm run dev
    ```
 
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+8. **Open browser**
+   ```
+   http://localhost:3000
+   ```
+
+### Option 2: Manual Setup
+
+If you have PostgreSQL installed locally:
+
+1. **Create database**
+   ```bash
+   createdb arkeojournal
+   ```
+
+2. **Update .env file**
+   ```bash
+   cp .env.example .env
+   # Edit DATABASE_URL to point to your local PostgreSQL
+   ```
+
+3. **Follow steps 4-8 from Option 1**
+
+## Test Accounts
+
+After seeding, use these credentials:
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | admin@arkeojournal.com | Admin123! |
+| **Editor** | editor@arkeojournal.com | Editor123! |
+| **Correspondent (Academic)** | academic@arkeojournal.com | Academic123! |
+| **Correspondent (Museum)** | museum@arkeojournal.com | Museum123! |
+| **Correspondent (Expert)** | expert@arkeojournal.com | Expert123! |
+| **Student** | student@arkeojournal.com | Student123! |
 
 ## Build & Deployment
 
@@ -107,22 +143,38 @@ npm run build
 # Start production server
 npm start
 
-# Run tests
-npm test
-
 # Run linting
 npm run lint
+
+# Seed database
+npm run seed
+```
+
+## Database Management
+
+```bash
+# View database UI
+npx prisma studio
+
+# Create new migration
+npx prisma migrate dev --name <migration_name>
+
+# Reset database (development only!)
+npx prisma migrate reset
+
+# Reset database without seeding
+npx prisma db push --force-reset
 ```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
+- `POST /api/auth/signin` - User login
+- `POST /api/auth/signout` - User logout
 - `GET /api/auth/session` - Get current session
 
 ### News Management
-- `GET /api/haberler` - List published news (with filters)
+- `GET /api/haberler` - List published news (with pagination/filters)
 - `POST /api/haberler` - Create new news (authenticated users)
 - `GET /api/haberler/[id]` - Get news details
 - `PUT /api/haberler/[id]` - Update news (author only)
@@ -139,8 +191,8 @@ npm run lint
 ## Database Schema
 
 ### Core Models
-- **User**: User accounts with role, organization, and department
-- **News**: News articles with status and editorial workflow
+- **User**: User accounts with role, organization, department
+- **News**: News articles with editorial workflow status
 - **NewsApproval**: Approval records for editorial workflow
 - **Comment**: Comments on news articles
 
@@ -160,37 +212,70 @@ npm run lint
 | STUDENT | ✗ | ✗ | ✗ | ✗ | ✗ |
 | GUEST | ✗ | ✗ | ✗ | ✗ | ✗ |
 
+## Editorial Workflow States
+
+```
+┌─────────┐
+│ DRAFT   │ (Author creates/edits)
+└────┬────┘
+     │ (Author submits)
+     ↓
+┌──────────────┐
+│ SUBMITTED    │ (Waiting for editor review)
+└────┬─────────┘
+     │ (Editor starts review)
+     ↓
+┌─────────────┐
+│ UNDER_REVIEW│ (Editor reviewing)
+└────┬────────┘
+     │
+     ├──→ ┌──────────┐ (If approved)
+     │    │ APPROVED │
+     │    └────┬─────┘
+     │         │ (Editor publishes)
+     │         ↓
+     │    ┌───────────┐
+     │    │ PUBLISHED │
+     │    └───────────┘
+     │
+     └──→ ┌──────────┐ (If rejected)
+          │ REJECTED │
+          └──────────┘
+```
+
+## Docker Commands
+
+```bash
+# Start PostgreSQL container
+docker-compose up -d
+
+# View database logs
+docker-compose logs -f postgres
+
+# Stop containers
+docker-compose down
+
+# View Docker statistics
+docker stats
+
+# Access PostgreSQL directly
+docker exec -it arkeojournal_db psql -U arkeojournal_user -d arkeojournal
+```
+
 ## Known Issues
 
-### Prisma Client Generation (BLOCKER)
+### Prisma Generate on macOS
 
-**Issue**: Running `npx prisma generate` fails with the error:
-```
-Error: ENOENT: no such file or directory, mkdir '/home/ubuntu'
-```
+If `npx prisma generate` fails with `mkdir '/home/ubuntu'` error on macOS:
 
-**Cause**: A bug in Prisma 6.7.0 trying to create a directory that doesn't exist on macOS systems.
+**Solution**: Use docker-compose PostgreSQL setup which works around this issue.
 
-**Workarounds**:
+## Performance Tips
 
-1. **Using Docker** (Recommended)
-   ```bash
-   docker run --rm -v $(pwd):/app -w /app node:18 npm install && npx prisma generate
-   ```
-
-2. **Using Linux/WSL**
-   Run the generation commands on a Linux machine where the directory structure is different.
-
-3. **Using Ubuntu container**
-   ```bash
-   docker run --rm -v $(pwd):/app -w /app ubuntu:22.04 bash -c "apt-get update && apt-get install -y nodejs npm && npm install && npx prisma generate"
-   ```
-
-**Next Steps**: Once Prisma client is properly generated, run:
-```bash
-npx prisma migrate dev --name add_editorial_workflow
-npm run build
-```
+1. **Use pagination** for news listing: `?page=1&limit=20`
+2. **Filter by category**: `?kategori=KAZIDAN_HABERLER`
+3. **Search functionality**: `?search=keyword`
+4. **Enable query caching** with proper TTL headers
 
 ## Contributing
 
@@ -199,6 +284,40 @@ npm run build
 3. Push to the branch (`git push origin feature/amazing-feature`)
 4. Open a Pull Request
 
+## Troubleshooting
+
+### Database connection issues
+```bash
+# Check PostgreSQL container
+docker-compose ps
+
+# Restart database
+docker-compose restart postgres
+
+# Check database health
+docker-compose exec postgres pg_isready -U arkeojournal_user
+```
+
+### Build errors
+```bash
+# Clear Next.js cache
+rm -rf .next
+
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install --legacy-peer-deps
+
+# Regenerate Prisma client
+npx prisma generate
+```
+
+### Port already in use
+```bash
+# Change port in docker-compose.yml or .env
+# Or kill process using port 5432
+lsof -ti:5432 | xargs kill -9
+```
+
 ## License
 
 This project is part of ArkeoJournal - a project for archaeological news management.
@@ -206,3 +325,8 @@ This project is part of ArkeoJournal - a project for archaeological news managem
 ## Support
 
 For issues and questions, please create an issue in the GitHub repository.
+
+---
+
+**Last Updated**: July 2026  
+**Version**: 1.0.0
