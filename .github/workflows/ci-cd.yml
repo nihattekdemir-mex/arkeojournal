@@ -39,14 +39,18 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
+       - name: Install dependencies
+         run: npm install --legacy-peer-deps
 
-      - name: Lint
-        run: npm run lint
-        continue-on-error: true
+       - name: Lint
+         run: npm run lint
+         continue-on-error: true
 
-      - name: Build
+       - name: Test
+         run: npm run test:coverage
+         continue-on-error: true
+
+       - name: Build
         run: npm run build
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/arkeojournal_test
