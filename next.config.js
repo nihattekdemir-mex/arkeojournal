@@ -1,27 +1,113 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: process.env.NEXT_DIST_DIR || '.next',
-  output: process.env.NEXT_OUTPUT_MODE,
-  productionBrowserSourceMaps: false,
-  experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../'),
+  reactStrictMode: true,
+  swcMinify: true,
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+    unoptimized: false,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  images: { unoptimized: true },
+
+  headers: async () => [
+    {
+      source: '/:path*',
+      headers: [
+        {
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'X-Frame-Options',
+          value: 'DENY',
+        },
+        {
+          key: 'X-XSS-Protection',
+          value: '1; mode=block',
+        },
+        {
+          key: 'Referrer-Policy',
+          value: 'strict-origin-when-cross-origin',
+        },
+      ],
+    },
+  ],
+
+  rewrites: async () => ({
+    beforeFiles: [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ],
+  }),
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.output.filename = 'static/chunks/[name]-[contenthash:8].js';
-      config.output.chunkFilename = 'static/chunks/[contenthash:16].js';
+      config.optimization = {
+        ...config.optimization,
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            vendor: {
+              filename: '[name].[contenthash].js',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            common: {
+              minChunks: 2,
+              priority: 10,
+              reuseExistingChunk: true,
+              filename: 'commons.[contenthash].js',
+            },
+          },
+        },
+      };
     }
+
     return config;
   },
+
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-*'],
+  },
+
+  typescript: {
+    tsconfigPath: './tsconfig.json',
+  },
+
+  eslint: {
+    dirs: ['app', 'lib', 'prisma'],
+  },
+
+  productionBrowserSourceMaps: false,
+
+  compress: true,
+
+  poweredByHeader: false,
+
+  redirects: async () => [
+    {
+      source: '/admin',
+      destination: '/admin',
+      permanent: false,
+    },
+  ],
 };
 
 module.exports = nextConfig;
