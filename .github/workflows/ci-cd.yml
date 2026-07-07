@@ -14,7 +14,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -33,37 +33,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-       - name: Setup Node.js
-         uses: actions/setup-node@v4
-         with:
-           node-version: ${{ env.NODE_VERSION }}
-           cache: npm
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-       - name: Install dependencies
-         run: npm install --legacy-peer-deps
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
-       - name: Lint
-         run: npm run lint
-         continue-on-error: true
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
 
-       - name: Test
-         run: npm run test:coverage
-         continue-on-error: true
+      - name: Test
+        run: npm run test:coverage
+        continue-on-error: true
 
-       - name: Build
-         run: npm run build
-         env:
-           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/arkeojournal_test
-           NEXTAUTH_SECRET: test_secret_key_for_ci
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/arkeojournal_test
+          NEXTAUTH_SECRET: test_secret_key_for_ci
 
-       - name: Upload coverage to Codecov
-         uses: codecov/codecov-action@v3
-         if: always()
-         continue-on-error: true
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        continue-on-error: true
 
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -87,7 +87,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+
     permissions:
       contents: read
       packages: write
@@ -130,7 +130,7 @@ jobs:
     needs: [test, build-image]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -148,7 +148,7 @@ jobs:
     needs: [test, build-image]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Workflow status
         run: |
